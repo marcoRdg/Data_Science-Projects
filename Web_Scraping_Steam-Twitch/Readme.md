@@ -36,4 +36,4 @@ realiza análises e manipulações desses dados com NumPy e Pandas, e exibe os r
 Além disso, fornece análises mais detalhadas através de um arquivo Markdown, 
 que facilitam o entendimento e exploração dos dados.
 
-![Alt Text](Web_Scraping_Steam-Twitch/library/prints/dash.png)
+![Alt Text](library/prints/dash.png)
