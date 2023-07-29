@@ -1,0 +1,341 @@
+---
+title: "FIFA - Previsao Salarial com Machine Learning "
+author: "Marco Rodrigues"
+#date: "2023-07-10"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T,
+                      fig.align='center',
+                      cache=TRUE,
+                      out.width = "60%",
+                      out.heigth = "60%",
+                      warning=FALSE,
+                      message=FALSE)
+options(width =70)
+```
+Bibliotecas
+```{r}
+library(tidyverse)
+library(stringr)
+library(tidymodels)
+library(leaps)
+library(corrplot)
+library(car)
+library(ggplot2)
+library(stringr)
+library(readr)
+library(knitr)
+
+```
+## 1° Manipulação, ajuste e limpeza dos dados
+-->Carregando Dados
+
+```{r cars}
+# Definir a URL do arquivo
+file_url <- "https://drive.google.com/uc?export=download&id=1jiWcGsl_tbqK5F0ryUTq48kcDTKWTTuk"
+
+# Ler o arquivo CSV e converter para tibble
+df_origin <- read.csv(file_url) %>% as_tibble
+```
+
+```{r}
+df_origin %>% arrange(desc(Overall)) %>% select(c(Name, Age, Overall, Club,Nationality)) %>%  head(6)
+```
+```{r}
+str(df_origin)
+```
+## ---> Ajuste dos dados para analise
+
+A partir da análise de variáveis e dos dados gerais, podemos ver que os dados não estão otimizados para analise,
+assim sendo, precisamos fazer algumas manipulações de modo a propiciar e evitar erro nos códigos e gráficos
+
+```{r}
+#Testando os valores das variaveis para Value
+fatores_textuais_value <- str_extract(df_origin$Value, "[A-Za-z]+") %>% as.factor()
+cat(nlevels(fatores_textuais_value),"- ")
+cat(levels( fatores_textuais_value),"\n")
+#Testando para Wage
+fatores_textuais_wage <- str_extract(df_origin$Wage, "[A-Za-z]+") %>% as.factor()
+cat(nlevels(fatores_textuais_wage),"- ")
+cat(levels( fatores_textuais_wage),"\n")
+
+```
+Podemos ver que as variáveis Wage (Sálario do jogador) e Value (valor do jogar), não estão em sua forma numérica e sim em entidades monetárias, assim sendo, possuem componentes textuais como o K(10^3) e M(10^6) além do símbolo da moeda EURO, então surge a necessidade de conversão
+
+```{r}
+#retira lacunas sem informação dos dados
+df <- df_origin 
+
+#função de conversão da notação textual para numeral
+parse.valor <- function(x) {
+  x <- substring(x, 2)
+  if (grepl("M", x) | grepl("K", x)) {
+    
+    notacao <- substring(x, nchar(x))
+    x <- as.integer(sub(notacao, "", x))
+    if (notacao == "K") {
+      x <- x * 1000
+    } else {
+      x <- x * 1000000
+    }
+  }
+  return(x)
+}
+
+#aplica a função para todos os itens da coluna Wage e Value
+df <- df %>%
+  mutate(Value = sapply(Value, parse.valor)) %>% 
+  mutate(Wage = sapply(Wage, parse.valor)) %>% na.omit()
+  
+```
+
+
+```{r}
+#altera o tipo de dados da variaveis CHR par INT exceto para os valores da var-> colunas
+colunas <- c("Name", "Flag", "Photo", "Club.Logo", "Club", "Preferred.Positions", "Nationality")
+df <- df %>% mutate_at(vars(-one_of(colunas)), ~as.integer(as.character(.)))
+
+```
+## 2 Análise Exploratória 
+
+```{r}
+paleta_cores <- c("#8179AF","#38A3A5","#255056","#2F4858","#A3586D")
+#scale_fill_manual(values = paleta_cores)
+
+# Stats Gerais
+cat(c("Quantidade de Jogadores:",nrow(df),"\n"))
+cat(c("Quantidade Características:", ncol(df)))
+```
+
+
+```{r}
+# Cálculo da média dos valores inteiros
+mean_values <- df %>%
+  select(where(is.integer)) %>%
+  summarise(across(everything(), ~mean(., na.rm = TRUE))) %>%
+  pivot_longer(everything(), names_to = "Caracteristica", values_to = "Media")
+
+# Formatação dos números em apenas 2 casas decimais
+mean_values$Media <- sprintf("%.2f", as.numeric(mean_values$Media))
+
+# Quebra da coluna em duas partes
+n_linhas <- nrow(mean_values)
+mean_values_1 <- mean_values %>%slice(1:round(n_linhas/2))
+mean_values_2 <- mean_values %>% slice((round(n_linhas/2)+1):nrow(mean_values))
+
+# Combinando as tibbles em uma única com uma quebra de coluna
+combined_mean_values <- cbind(mean_values_1, mean_values_2)
+
+# Exibindo a tibble combinada com kable
+combined_mean_values %>% head(10) %>% kable()
+
+```
+
+```{r fig.width=6, fig.height=4}
+#Verifica a média salarial por Club
+df %>% mutate(Club = as.factor(Club)) %>% 
+  group_by(Club) %>% 
+  summarise(Salario = sum(Wage),
+            Media = mean(Wage)) %>% 
+  arrange(desc(Salario))%>% 
+  head(5) %>% 
+  ggplot(aes(x = Club, y = Media/1000, fill =Club)) +
+    geom_bar(stat = "identity") +
+    labs(x = "Clube", y = "Salário Médio (10^+3)", title = "Média Salarial por Clube")+
+    theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_blank()) +
+    scale_fill_manual(values = paleta_cores)
+   
+```
+
+```{r}
+# Distribuição de Idade
+df %>% select(Age) %>%  
+ggplot(aes(x = Age)) +
+  geom_histogram(aes(y = ..density..), binwidth = 1, fill = "steelblue", color = "white") +
+  geom_density(alpha = 0.15, fill = "violet") +
+  labs(title = "Distribuição de Idade", x = "Idade", y = "Densidade de Probabilidade") +
+  scale_x_continuous(breaks = unique(df$Age), labels = unique(df$Age))+
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+```{r}
+df %>% select(Age,Wage) %>% 
+  ggplot(aes(x=Wage, y= Age))+
+    geom_violin(fill="steelblue")+
+    labs(title = "Distribuição de Salário por idade", x ="Salário", y="Idade")+
+    coord_flip()+
+    theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+## 3 Modelos Preditivos
+-Seleção e ajuste variáveis escolhidas (desconsiderando fatores fora as características físicas do jogador)
+
+```{r}
+# Selecionar as colunas desejadas
+df <- df %>%
+  select(Age, Overall, Potential, Wage, Special, Acceleration, Aggression, Agility, Balance,
+         Ball.control, Composure, Crossing, Curve, Dribbling, Finishing, Positioning, Stamina,
+         Interceptions,Strength, Vision, Volleys, Jumping, Penalties, Shot.power, Sprint.speed,
+         Heading.accuracy, Long.passing, Short.passing) %>% mutate_if(is.character,as.integer) %>%
+         na.omit()
+
+# Conjuntos para validação cruzada 
+cv_folds <- vfold_cv(df, v = 10)
+```
+### - knn - K-nearest neighbors
+
+```{r}
+# Implementa modelo knn modo de regressão
+knn.model <- nearest_neighbor(neighbors = tune(),
+  weight_func = "rectangular",
+  dist_power = 2) %>%
+  set_engine("kknn") %>%
+  set_mode("regression")
+
+# Define a grade de busca para o hiperparâmetro K 
+knn_grid <- grid_regular(neighbors(range = c(1,30)), levels = 15)
+
+# Crie uma receita de treinamento
+knn_recipe <- recipe(Wage ~ ., data = df) %>%
+  step_normalize(all_predictors()) 
+
+# Busca do hiperparâmetro
+knn_values <- tune_grid(knn.model, knn_recipe, resamples = cv_folds, grid = knn_grid)
+
+# Armazena o melhor parâmtro
+best_knn_model <- select_best(knn_values, metric = "rsq" )
+
+#conjunto de melhores valores para k
+knn_values %>% show_best(metric = "rsq") %>% arrange(desc(mean)) %>% kable()
+```
+
+```{r}
+knn_values %>% 
+  collect_metrics() %>% 
+  filter(.metric == "rsq") %>% 
+  arrange(desc(mean)) %>% 
+  ggplot(aes(x= neighbors, y = mean))+
+  geom_line()+
+  geom_point(aes(x=neighbors[1], mean[1]),
+             color = "cyan",
+             size = 3)+
+  labs(x = "N° Vizinhos", y = "Média", title = "Distribuição de vizinhos(k) pela R^2")+
+  theme(plot.title = element_text(hjust = 0.5))
+  
+```
+
+```{r}
+knn_wflow <- 
+  workflow() %>% 
+  add_model(knn.model) %>% 
+  add_recipe(knn_recipe)
+
+final_mlp_wflow <- 
+  knn_wflow %>% 
+  finalize_workflow(best_knn_model)
+print(final_mlp_wflow)
+```
+
+### - Regressão Linear
+```{r}
+modelo.linear <- lm(Wage ~ ., data = df)
+summario <- summary(modelo.linear) %>% 
+  tidy() %>% 
+  filter(p.value < 0.001, term != "(Intercept)") %>% 
+  arrange(p.value)
+
+summario %>% kable()  
+```
+
+```{r}
+#Variance inflation factor
+coef.inf <- vif(modelo.linear) 
+
+tibbel_vif <- tibble(caracteristicas = names(coef.inf), vif = coef.inf) %>% 
+  arrange(desc(vif))
+high_corr <- sum(head(tibbel_vif$caracteristicas,10) %in%  summario$term)
+cat(high_corr)
+```
+Efetuando uma regressão simples sem parâmetros de penalização, seleção de variáveis e outros métodos,
+podemos ver que pelos menos 3 variáveis com alta relação à resposta possuem alta colinearidade.
+
+
+```{r}
+matrix_corr <- df %>% select(all_of(names(coef.inf))) %>% head(10) %>% cor() 
+
+# Plotar a matriz de colinearidade 
+corrplot(matrix_corr, type = "full", method = "circle", 
+         tl.col = "black", tl.srt = 90, tl.cex = 0.8,
+         addrect = 3, rect.col = "white", rect.lwd = 2, rect.lty = "dashed")
+
+
+```
+Devido a alta colinearidade devemos utilizar de algum método para reduzir tal interferência nos dados, para este estudo foi utilizado o método elastic net, tal qual está entre a penalização mais abrangente as características RIDGE e o LASSO uma mais restritiva. 
+```{r}
+# Implementa modelo regressão
+elastic_net_model <- linear_reg(penalty = tune(),
+                       mixture = tune()) %>% 
+  set_engine("glmnet")
+
+# Define a grade de busca para o hiperparâmetro a penalidade (lambda) e mixture (seleção de variáveis) 
+elastic_grid <- grid_regular(penalty(), mixture(range=c(0.1,0.9)), levels = 10)
+
+# Crie uma receita de treinamento
+elastic_recipe <- recipe(Wage ~ ., data = df) %>%
+  step_normalize(all_predictors())
+
+# Busca do hiperparâmetro
+elastic_values <- tune_grid(elastic_net_model, elastic_recipe, resamples = cv_folds, grid = elastic_grid)
+
+print(show_best(elastic_values,metric = "rsq"))
+
+# Armazena o melhor parâmtro
+best_ln_model <- select_best(elastic_values, metric = "rsq" )
+
+#conjunto de melhores valores para a penalidade e mixture
+elastic_values %>% show_best(metric = "rsq") %>% arrange(desc(mean)) %>% kable()
+```
+Podemos ver agora quais os coeficientes betas que foram escolhidos pelo modelo 
+(fator de interferência na resposta por caracteristica)
+```{r}
+melhor_penalty = best_ln_model$penalty
+melhor_mixture = best_ln_model$mixture
+
+lin.fit <- linear_reg( penalty = melhor_penalty, mixture = melhor_mixture) %>%
+  set_engine("glmnet") %>%
+  fit( Wage ~ . , data = df )
+
+# Extraindo os coeficientes beta do ajuste
+lin.fit %>%
+  pluck("fit") %>% 
+  coef(s = melhor_penalty)
+
+```
+E o gráfico de decaimento dos coeficiente perante o aumento da penalização (> penalty <caracteristicas importam para resposta)
+```{r}
+# gráfico do decaimento dos coeficientes betas
+plot( lin.fit %>% pluck("fit"), xvar = "lambda")
+
+```
+
+```{r}
+ln_wflow <- 
+  workflow() %>% 
+  add_model(elastic_net_model) %>% 
+  add_recipe(elastic_recipe)
+
+final_ln_model <- 
+  ln_wflow %>% 
+  finalize_workflow(best_ln_model)
+print(final_ln_model)
+
+```
+
