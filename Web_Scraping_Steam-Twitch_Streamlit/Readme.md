@@ -32,7 +32,7 @@ O projeto também inclui arquivos de análise mais detalhada usando o ambiente J
 Esses arquivos contêm explicações mais detalhadas e passo a passo da análise realizada, permitindo uma exploração mais profunda dos dados.
 
 Projeto obtém dados de métricas da Steam e Twitch por meio da Classe de Conexão, 
-realiza análises e manipulações desses dados com NumPy e Pandas, e exibe os resultados através de um dashboard, uma interface gráfica de usuário usando Tkinter. 
+realiza análises e manipulações desses dados com NumPy e Pandas, e exibe os resultados através de um dashboard, uma interface gráfica de usuário usando uma aplicação Web Streamlit. 
 Além disso, fornece análises mais detalhadas através de um arquivo Markdown, 
 que facilitam o entendimento e exploração dos dados.
 
