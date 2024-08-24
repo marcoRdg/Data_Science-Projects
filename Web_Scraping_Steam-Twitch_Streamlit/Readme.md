@@ -12,7 +12,7 @@ Bibliotecas:
 - NumPy (Manipulação dos dados)
 - Pandas (Manipulação de planilhas)
 - Streamlit (DashBoard)
-- Selenium (Automação)
+- Selenium (Automação) 
 
 O projeto é estruturado em um conjunto de classes e arquivos que trabalham em conjunto para realizar análises e exibir gráficos relacionados a métricas da plataforma Steam e Twitch. 
 Possuindo duas classes de suporte.
