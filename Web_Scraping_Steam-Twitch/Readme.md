@@ -17,7 +17,7 @@ Bibliotecas:
 O projeto é estruturado em um conjunto de classes e arquivos que trabalham em conjunto para realizar análises e exibir gráficos relacionados a métricas da plataforma Steam e Twitch. 
 Possuindo duas classes de suporte.
 - Conexão:
-Classe responsável por se conectar aos repectivos sites de métricas Steam e Twitch para obter os dados de métricas relevantes utiliando Selenium. 
+Classe responsável por se conectar aos repectivos sites de métricas Steam e Twitch para obter os dados por meio de um Scrapping de métricas relevantes utiliando Selenium. 
 
 - DashBoard:
 A classe Dash é responsável por criar e abrir um dashboard (painel de controle) que irá exibir os gráficos e visualizações das análises realizadas. 
@@ -37,3 +37,15 @@ Além disso, fornece análises mais detalhadas através de um arquivo Markdown,
 que facilitam o entendimento e exploração dos dados.
 
 ![Alt Text](library/prints/dash.png)
+
+---
+> ## Atualização do DashBoard com Streamlit
+
+Para melhor entendimento visual das métricas obtidas, reformulei o DashBoard e atualizei o Design com a construção de uma visualização WebPage em Streamlit. É criado uma nova estrutura de visualização com graficos
+melhores estruturados permitindo uma compreensão visual mais efetiva, além da disponibilização da base de dados construida pelo Scrapping em Selenium; contudo, ainda mantendo disponibilidade de atualização em tempo real dos dados.
+![Primiera Parte Dashboard](library/prints/dash_pt1.png)
+<div align="center">
+  -x-
+</div>
+
+![Segunda Parte Dashboard](library/prints/DashBoard_pt2.png)
