@@ -75,9 +75,15 @@ class Dashboard(tk.Tk):
         df_twitch = obj.get_dados_twitch()
         obj.fechar_navegador()
 
+        # DF da união das duas tabelas
+        df_merge = df_twitch.merge(df_steam, on='Jogo', how='inner')
+        x = df_merge['jogadores_at_moment']
+        y = df_merge['Viewer Hours']
+
         # Atualizacao dos graficos
         # Barras
         df = df_steam.sort_values(by="jogadores_at_moment", ascending=False)
+        self.ax1.clear()
         self.ax1.bar(df['Jogo'].head(5), df['jogadores_at_moment'].head(5), color=self.cores)
         self.ax1.set_title("Jogadores no momento - Steam (Descrescente)")
         self.ax1.set_xlabel("Product")
@@ -99,10 +105,10 @@ class Dashboard(tk.Tk):
 
         # Pontos
         self.ax4.clear()
-        self.ax4.plot(df_twitch['Avg Live Channels'].astype(float), df_twitch['Avg Viewers'].astype(float), '.')
-        self.ax4.set_title("Viewers per Channels - Twitch")
-        self.ax4.set_xlabel("Channels")
-        self.ax4.set_ylabel("Viewers")
+        self.ax4.plot(x.astype(float), y.astype(float), '.')
+        self.ax4.set_title("Mais jogados por Mais assistidos")
+        self.ax4.set_xlabel("Jogadores no Momento")
+        self.ax4.set_ylabel("Views per Hours")
         self.canvas4.draw()
 
 if __name__ == "__main__":
